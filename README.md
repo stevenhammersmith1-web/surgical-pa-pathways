@@ -16,3 +16,8 @@ and recorded in `build/plates.js`.
 ```
 cd build && node build.js
 ```
+
+## Deployment
+
+Every push to `main` runs `.github/workflows/pages.yml`, which rebuilds the app and publishes it to
+GitHub Pages as `index.html`. Commit and push to make changes live.
