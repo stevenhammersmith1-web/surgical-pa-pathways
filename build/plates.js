@@ -44,6 +44,18 @@ const IMAGES = {
     credit: 'Don Bliss, National Cancer Institute (NCI Visuals Online #9306). Cropped.',
     license: 'Public domain (U.S. Gov.)',
     url: 'https://commons.wikimedia.org/wiki/File:Breast_anatomy.jpg'
+  },
+  subclavian_deep: {
+    title: 'Deep: subclavian vessels & needle path',
+    credit: 'Skeleton: Mikael Häggström after Mariana Ruiz Villarreal (Wikimedia Commons); vessels & landmarks drawn for this app',
+    license: 'Public domain',
+    url: 'https://commons.wikimedia.org/wiki/File:Human_skeleton_front_-_no_labels.svg'
+  },
+  subclavian_surface: {
+    title: 'Surface: entry point & aim',
+    credit: 'Gray’s Anatomy (1918), fig. 1219; landmarks drawn for this app',
+    license: 'Public domain',
+    url: 'https://commons.wikimedia.org/wiki/File:Gray1219.png'
   }
 };
 
@@ -103,4 +115,15 @@ const PLATES = {
   ]
 };
 
-module.exports = { IMAGES, PLATES };
+// Annotated figures shown side by side in place of a procedure's hand-drawn landmark diagram.
+const DIAGRAMS = {
+  'port-subclavian': {
+    note: 'Enter 1–2 cm below the clavicle at the junction of its medial third and lateral two-thirds (amber). Aim at the sternal notch (teal), keeping the needle nearly parallel to the chest wall and walking it along the underside of the clavicle. The subclavian vein lies just behind the medial clavicle, in front of and below the artery; the artery arches higher, behind the anterior scalene. Vessel paths are schematic.',
+    panels: [
+      { img:'subclavian_deep', note:'The subclavian vein (blue) crosses the first rib just behind the clavicle and joins the internal jugular behind the sternoclavicular joint to form the brachiocephalic vein. The artery (red) arches above and behind it. The needle meets the vein under the medial clavicle on its way toward the notch. Vessel paths are schematic.' },
+      { img:'subclavian_surface', note:'On the skin: find the sternal notch and the clavicle, divide the clavicle into thirds, and enter 1–2 cm below it at the medial-third / lateral-two-thirds point. Aim at the notch.' }
+    ]
+  }
+};
+
+module.exports = { IMAGES, PLATES, DIAGRAMS };
