@@ -515,6 +515,20 @@ section h3{font-size:12px;font-family:"IBM Plex Mono",monospace;font-weight:600;
   background:var(--paper);border:1px solid var(--paper-line);border-radius:10px}
 .platebig + p{margin:0 0 8px}
 @media (max-width:900px){.plateimg{height:190px}.plateimg img{max-height:168px}.platebig{height:52dvh}.platebig img{max-height:calc(52dvh - 28px)}}
+/* ---------- OpenEvidence hand-off ---------- */
+.oe{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--accent);display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border:1px solid var(--accent);
+  border-radius:6px;background:none;transition:.12s;white-space:nowrap}
+.oe:hover{background:var(--accent-wash)}
+.chead2 .oe{margin-left:6px}
+.empty .oe{margin-top:12px;text-transform:none;font-size:12px;letter-spacing:0;white-space:normal;text-align:left}
+.oetoast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:90;max-width:min(440px,92vw);
+  background:var(--surface);border:1px solid var(--line-2);border-radius:10px;box-shadow:var(--shadow-lg);
+  padding:11px 15px;font-size:13px;line-height:1.5;color:var(--ink);display:flex;gap:10px;align-items:flex-start}
+.oetoast svg{flex:none;margin-top:2px;color:var(--accent)}
+.oetoast b{font-weight:600}
+@media (prefers-reduced-motion:no-preference){.oetoast{animation:oerise .18s cubic-bezier(.2,.8,.3,1)}}
+@keyframes oerise{from{transform:translate(-50%,10px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
 .wtpulsecore{fill:var(--accent)}
 .wtpulsering{fill:none;stroke:var(--accent);stroke-width:2;transform-box:fill-box;transform-origin:center;
   animation:wtpulse 1.8s ease-out infinite}
@@ -2063,7 +2077,7 @@ function renderNav(){
         + hits.map(c=>`<button class="navitem res" data-id="${c.id}" ${state.id===c.id?'aria-current="true"':''}>
           <span class="nm">${hl(c.name,state.q)}</span>
           <span class="ct">${esc(CATNAME[c.category]||'')}</span></button>`).join('')
-      : `<div class="empty">Nothing matches &ldquo;${esc(state.q)}&rdquo;.<br>Try a drug, a finding, or a score.</div>`;
+      : `<div class="empty">Nothing matches &ldquo;${esc(state.q)}&rdquo;.<br>Try a drug, a finding, or a score.${oeButton(state.q, 'Ask OpenEvidence instead')}</div>`;
     return;
   }
   $('#navhead').textContent = '';
@@ -2156,6 +2170,7 @@ function renderCondition(){
       ${(c.setting||[]).map(s=>`<span class="badge">${esc(s)}</span>`).join('')}
       <a class="utd" href="${utd}" target="_blank" rel="noopener">UpToDate
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+      ${oeButton(c.name + ': current evidence-based workup and management?')}
     </div>
     <h2>${esc(c.name)}</h2>
     <p class="oneliner">${esc(c.oneLiner)}</p>
@@ -2548,7 +2563,7 @@ function renderWalkthroughStep(tool){
 
   $('#view').innerHTML = `
   <div class="chead2">
-    <div class="top"><span class="eyebrow">Tool</span><button class="ghost" data-wtback2list="1" style="margin-left:auto">Change procedure</button></div>
+    <div class="top"><span class="eyebrow">Tool</span>${oeButton(proc.name + ' \u2014 ' + s.title + ': what does current evidence recommend?')}<button class="ghost" data-wtback2list="1" style="margin-left:auto">Change procedure</button></div>
     <h2>${esc(proc.name)}</h2>
     ${proc.modalityNote?`<p class="oneliner" style="color:var(--caution)">${esc(proc.modalityNote)}</p>`:''}
   </div>
@@ -2710,6 +2725,45 @@ function openSheet(kind,title,body){
 }
 function closeSheet(){ $('#sheet').classList.remove('open','wide'); }
 
+/* ================= OpenEvidence hand-off ================= */
+const OE_URL = 'https://www.openevidence.com/';
+function oeButton(question, label){
+  return `<button class="oe" data-oe="${esc(question)}" title="Copy this question and open OpenEvidence in a new tab">${esc(label||'OpenEvidence')}
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M7 17 17 7M9 7h8v8"/></svg></button>`;
+}
+function oeCopy(text){
+  try{
+    if(navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).then(()=>true,()=>oeCopyFallback(text));
+  }catch(e){}
+  return Promise.resolve(oeCopyFallback(text));
+}
+function oeCopyFallback(text){
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly',''); ta.style.cssText='position:fixed;top:-1000px;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove(); return ok;
+  }catch(e){ return false; }
+}
+let oeToastTimer = null;
+function oeToast(copied, question){
+  document.querySelector('.oetoast')?.remove();
+  const el = document.createElement('div');
+  el.className = 'oetoast'; el.setAttribute('role','status');
+  el.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+    <span>${copied
+      ? '<b>Question copied.</b> Paste it into OpenEvidence in the new tab.'
+      : '<b>Copy it manually:</b><br>' + esc(question)}</span>`;
+  document.body.appendChild(el);
+  clearTimeout(oeToastTimer);
+  oeToastTimer = setTimeout(()=>el.remove(), copied ? 6000 : 15000);
+}
+function askOpenEvidence(question){
+  window.open(OE_URL, '_blank', 'noopener');      // opened on the click, before any await
+  Promise.resolve(oeCopy(question)).then(ok=>oeToast(!!ok, question));
+}
+
 /* ================= search focus ================= */
 const isNarrow = ()=>matchMedia('(max-width:900px)').matches;
 function focusSearch(){
@@ -2726,7 +2780,7 @@ function setQuery(v){
 
 /* ================= events ================= */
 document.addEventListener('click', e=>{
-  const t = e.target.closest('[data-id],[data-cat],[data-opencat],[data-tab],[data-toggleflags],[data-focus-search],[data-mode],[data-go],[data-back],[data-restart],[data-rewind],[data-node],[data-close],[data-filter],[data-tool],[data-wizgo],[data-wizback],[data-wizrestart],[data-wizrewind],[data-wizmulti],[data-wizmulticonfirm],[data-track],[data-wtopen],[data-wtnext],[data-wtprev],[data-wtjumptoggle],[data-wtgo],[data-wtback2list],[data-wtanattoggle],[data-plate]');
+  const t = e.target.closest('[data-id],[data-cat],[data-opencat],[data-tab],[data-toggleflags],[data-focus-search],[data-mode],[data-go],[data-back],[data-restart],[data-rewind],[data-node],[data-close],[data-filter],[data-tool],[data-wizgo],[data-wizback],[data-wizrestart],[data-wizrewind],[data-wizmulti],[data-wizmulticonfirm],[data-track],[data-wtopen],[data-wtnext],[data-wtprev],[data-wtjumptoggle],[data-wtgo],[data-wtback2list],[data-wtanattoggle],[data-plate],[data-oe]');
   if(!t) return;
 
   if(t.dataset.close!==undefined || t.classList.contains('scrim')) return closeSheet();
@@ -2764,6 +2818,7 @@ document.addEventListener('click', e=>{
   if(t.dataset.wtnext!==undefined){ state.wtStep++; renderWalkthroughTool(); $('#main').scrollTop=0; return; }
   if(t.dataset.wtprev!==undefined){ if(state.wtStep>0) state.wtStep--; renderWalkthroughTool(); $('#main').scrollTop=0; return; }
   if(t.dataset.wtjumptoggle!==undefined){ state.wtJumpOpen=!state.wtJumpOpen; renderWalkthroughTool(); return; }
+  if(t.dataset.oe){ askOpenEvidence(t.dataset.oe); return; }
   if(t.dataset.plate){ openPlate(t.dataset.plate); return; }
   if(t.dataset.wtanattoggle!==undefined){ state.wtAnatOpen=!state.wtAnatOpen; renderWalkthroughTool(); return; }
   if(t.dataset.wtgo){ state.wtStep=+t.dataset.wtgo; state.wtJumpOpen=false; renderWalkthroughTool(); $('#main').scrollTop=0; return; }

@@ -49,6 +49,20 @@ replaceOnce('.wtpulsecore{fill:var(--accent)}', `.plates{padding:4px 10px 14px;b
   background:var(--paper);border:1px solid var(--paper-line);border-radius:10px}
 .platebig + p{margin:0 0 8px}
 @media (max-width:900px){.plateimg{height:190px}.plateimg img{max-height:168px}.platebig{height:52dvh}.platebig img{max-height:calc(52dvh - 28px)}}
+/* ---------- OpenEvidence hand-off ---------- */
+.oe{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--accent);display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border:1px solid var(--accent);
+  border-radius:6px;background:none;transition:.12s;white-space:nowrap}
+.oe:hover{background:var(--accent-wash)}
+.chead2 .oe{margin-left:6px}
+.empty .oe{margin-top:12px;text-transform:none;font-size:12px;letter-spacing:0;white-space:normal;text-align:left}
+.oetoast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:90;max-width:min(440px,92vw);
+  background:var(--surface);border:1px solid var(--line-2);border-radius:10px;box-shadow:var(--shadow-lg);
+  padding:11px 15px;font-size:13px;line-height:1.5;color:var(--ink);display:flex;gap:10px;align-items:flex-start}
+.oetoast svg{flex:none;margin-top:2px;color:var(--accent)}
+.oetoast b{font-weight:600}
+@media (prefers-reduced-motion:no-preference){.oetoast{animation:oerise .18s cubic-bezier(.2,.8,.3,1)}}
+@keyframes oerise{from{transform:translate(-50%,10px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
 .wtpulsecore{fill:var(--accent)}`);
 
 // 3. data: images as base64 WebP, stored once and referenced by key
@@ -113,12 +127,70 @@ function openPlate(ref){
 }
 
 /* ================= node detail sheet ================= */`);
+// 5. OpenEvidence hand-off (no public API: copy the question, open the site in a new tab)
+replaceOnce('/* ================= search focus ================= */',
+`/* ================= OpenEvidence hand-off ================= */
+const OE_URL = 'https://www.openevidence.com/';
+function oeButton(question, label){
+  return \`<button class="oe" data-oe="\${esc(question)}" title="Copy this question and open OpenEvidence in a new tab">\${esc(label||'OpenEvidence')}
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M7 17 17 7M9 7h8v8"/></svg></button>\`;
+}
+function oeCopy(text){
+  try{
+    if(navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).then(()=>true,()=>oeCopyFallback(text));
+  }catch(e){}
+  return Promise.resolve(oeCopyFallback(text));
+}
+function oeCopyFallback(text){
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly',''); ta.style.cssText='position:fixed;top:-1000px;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove(); return ok;
+  }catch(e){ return false; }
+}
+let oeToastTimer = null;
+function oeToast(copied, question){
+  document.querySelector('.oetoast')?.remove();
+  const el = document.createElement('div');
+  el.className = 'oetoast'; el.setAttribute('role','status');
+  el.innerHTML = \`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+    <span>\${copied
+      ? '<b>Question copied.</b> Paste it into OpenEvidence in the new tab.'
+      : '<b>Copy it manually:</b><br>' + esc(question)}</span>\`;
+  document.body.appendChild(el);
+  clearTimeout(oeToastTimer);
+  oeToastTimer = setTimeout(()=>el.remove(), copied ? 6000 : 15000);
+}
+function askOpenEvidence(question){
+  window.open(OE_URL, '_blank', 'noopener');      // opened on the click, before any await
+  Promise.resolve(oeCopy(question)).then(ok=>oeToast(!!ok, question));
+}
+
+/* ================= search focus ================= */`);
+
+replaceOnce('</svg></a>\n    </div>\n    <h2>${esc(c.name)}</h2>',
+  '</svg></a>\n      ${oeButton(c.name + \': current evidence-based workup and management?\')}\n    </div>\n    <h2>${esc(c.name)}</h2>');
+
+replaceOnce('<div class="top"><span class="eyebrow">Tool</span><button class="ghost" data-wtback2list="1" style="margin-left:auto">Change procedure</button></div>',
+  '<div class="top"><span class="eyebrow">Tool</span>${oeButton(proc.name + \' \\u2014 \' + s.title + \': what does current evidence recommend?\')}<button class="ghost" data-wtback2list="1" style="margin-left:auto">Change procedure</button></div>');
+
+replaceOnce('`<div class="empty">Nothing matches &ldquo;${esc(state.q)}&rdquo;.<br>Try a drug, a finding, or a score.</div>`',
+  '`<div class="empty">Nothing matches &ldquo;${esc(state.q)}&rdquo;.<br>Try a drug, a finding, or a score.' +
+  '${oeButton(state.q, \'Ask OpenEvidence instead\')}</div>`');
+
 replaceOnce("  $('#sheet').classList.add('open');\n}\nfunction closeSheet(){ $('#sheet').classList.remove('open'); }",
   "  $('#sheet').classList.remove('wide');\n  $('#sheet').classList.add('open');\n}\nfunction closeSheet(){ $('#sheet').classList.remove('open','wide'); }");
 
 replaceOnce(',[data-wtanattoggle]\');', ',[data-wtanattoggle],[data-plate]\');');
 replaceOnce("  if(t.dataset.wtanattoggle!==undefined){",
   "  if(t.dataset.plate){ openPlate(t.dataset.plate); return; }\n  if(t.dataset.wtanattoggle!==undefined){");
+
+// click handling for the OpenEvidence buttons (after the plate handler is in place)
+replaceOnce(',[data-plate]\');', ',[data-plate],[data-oe]\');');
+replaceOnce("  if(t.dataset.plate){ openPlate(t.dataset.plate); return; }",
+  "  if(t.dataset.oe){ askOpenEvidence(t.dataset.oe); return; }\n  if(t.dataset.plate){ openPlate(t.dataset.plate); return; }");
 
 fs.writeFileSync(path.join(APP, 'surgical-pa-pathways.html'), s);
 console.log('bytes', Buffer.byteLength(s), 'images', Object.keys(src).length);

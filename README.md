@@ -17,6 +17,13 @@ and recorded in `build/plates.js`.
 cd build && node build.js
 ```
 
+## OpenEvidence hand-off
+
+OpenEvidence has no public API and blocks programmatic access, so the app cannot show its
+answers inline. Instead, buttons on each condition page, each walkthrough step, and the
+"nothing matches" search state copy a question to the clipboard and open openevidence.com
+in a new tab (see the hand-off section in `build/build.js`). Sign-in happens there, as normal.
+
 ## Deployment
 
 Every push to `main` runs `.github/workflows/pages.yml`, which rebuilds the app and publishes it to
